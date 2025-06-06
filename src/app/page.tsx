@@ -1,5 +1,6 @@
 import { Me } from "@/components/me";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -22,9 +23,15 @@ export default function Home() {
         />
       </div>
 
-      <div className="h-14 border-t w-full grid place-items-center">
-        <div className="">
+      <div className="h-32 border-t w-full grid place-items-center">
+        <div className="space-y-4 text-center">
           <Me />
+          <Link 
+            href="/receipts" 
+            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            View My Receipts
+          </Link>
         </div>
       </div>
     </main>
