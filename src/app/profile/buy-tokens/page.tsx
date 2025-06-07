@@ -1,5 +1,7 @@
 "use client";
 
+import { CardFooter } from "@/components/ui/card";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLaunchParams } from "@telegram-apps/sdk-react";
@@ -8,7 +10,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Coins, ArrowLeft, CreditCard } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 
 const tokenPackages = [
   { id: "small", tokens: 10, price: 0.99, popular: false },
@@ -26,6 +28,7 @@ const tokenPackages = [
 ];
 
 export default function BuyTokensPage() {
+  const t = useTranslations();
   const router = useRouter();
   const { tgWebAppData } = useLaunchParams();
   const queryClient = useQueryClient();
@@ -78,10 +81,8 @@ export default function BuyTokensPage() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Welcome to Receipt Tracker</CardTitle>
-            <CardDescription>
-              Please open this app from Telegram to continue
-            </CardDescription>
+            <CardTitle>{t("common.welcomeTitle")}</CardTitle>
+            <CardDescription>{t("common.telegramRequired")}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -92,31 +93,35 @@ export default function BuyTokensPage() {
     <div className="container mx-auto px-4 py-6 max-w-2xl">
       <Button variant="ghost" onClick={handleBack} className="mb-4">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Dashboard
+        {t("common.back")} to {t("navigation.dashboard")}
       </Button>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
             <Coins className="w-5 h-5 mr-2" />
-            Buy Tokens
+            {t("buyTokens.title")}
           </CardTitle>
-          <CardDescription>
-            Purchase tokens to process receipts and access premium features
-          </CardDescription>
+          <CardDescription>{t("buyTokens.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Current Balance */}
           <div className="bg-gray-100 p-4 rounded-lg">
-            <div className="text-sm text-gray-500">Current Balance</div>
+            <div className="text-sm text-gray-500">
+              {t("buyTokens.currentBalance")}
+            </div>
             <div className="text-2xl font-bold">
-              {isLoadingProfile ? "Loading..." : profile?.tokens || 0} tokens
+              {isLoadingProfile
+                ? t("common.loading")
+                : t("labels.tokens", { count: profile?.tokens || 0 })}
             </div>
           </div>
 
           {/* Token Packages */}
           <div>
-            <h3 className="text-lg font-medium mb-4">Select a Package</h3>
+            <h3 className="text-lg font-medium mb-4">
+              {t("buyTokens.selectPackage")}
+            </h3>
             <RadioGroup
               value={selectedPackage}
               onValueChange={setSelectedPackage}
@@ -134,7 +139,7 @@ export default function BuyTokensPage() {
                   {pkg.popular && (
                     <div className="absolute -top-2 -right-2">
                       <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                        Best Value
+                        {t("buyTokens.bestValue")}
                       </span>
                     </div>
                   )}
@@ -147,7 +152,7 @@ export default function BuyTokensPage() {
                       <span className="font-medium">{pkg.tokens} Tokens</span>
                       <span className="text-sm text-gray-500">
                         {pkg.tokens > 1
-                          ? `${(pkg.price / pkg.tokens).toFixed(2)}¢ per token`
+                          ? `${(pkg.price / pkg.tokens).toFixed(2)}${t("buyTokens.perToken")}`
                           : ""}
                       </span>
                     </Label>
@@ -167,12 +172,12 @@ export default function BuyTokensPage() {
             {isPending ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Processing...
+                {t("buyTokens.processing")}
               </>
             ) : (
               <>
                 <CreditCard className="w-4 h-4 mr-2" />
-                Purchase Now
+                {t("buyTokens.purchase")}
               </>
             )}
           </Button>

@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useEffect } from "react";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLaunchParams } from "@telegram-apps/sdk-react";
+import { useTranslations } from "next-intl";
 import {
   getUserReceiptsPaginated,
   getFilterOptions,
 } from "@/app/receipts/actions";
-import { getUserProfile } from "@/app/profile/actions";
 import {
   Card,
   CardContent,
@@ -45,12 +43,17 @@ import {
   Plus,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useLaunchParams } from "@telegram-apps/sdk-react";
+import { getUserProfile } from "@/app/profile/actions";
 
 export default function HomePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [user, setUser] = useState<any>(undefined);
   const { tgWebAppData } = useLaunchParams();
+  const [user, setUser] = useState<any>(undefined);
+
+  // Translations
+  const t = useTranslations();
 
   useEffect(() => {
     if (tgWebAppData) {
@@ -66,7 +69,7 @@ export default function HomePage() {
       return getUserProfile(user.id);
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   // Get receipt data for charts
@@ -76,13 +79,13 @@ export default function HomePage() {
       if (!user?.id) throw new Error("User not found");
       const data = await getUserReceiptsPaginated({
         telegramId: user.id,
-        limit: 100, // Get more receipts for better analytics
+        limit: 100,
         sort: { field: "date", direction: "desc" },
       });
       return data;
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   // Get categories for charts
@@ -93,17 +96,15 @@ export default function HomePage() {
       return getFilterOptions(user.id);
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 10,
   });
 
   // Prepare chart data
   const categoryData = React.useMemo(() => {
     if (!receiptData?.receipts || !filterOptions?.categories) return [];
 
-    // Create a map to store total spending by category
     const categoryMap = new Map();
 
-    // Initialize with all categories
     filterOptions.categories.forEach((category) => {
       categoryMap.set(category.id, {
         name: category.name,
@@ -112,7 +113,6 @@ export default function HomePage() {
       });
     });
 
-    // Sum up spending by category
     receiptData.receipts.forEach((receipt) => {
       if (receipt.category?.id) {
         const current = categoryMap.get(receipt.category.id);
@@ -125,7 +125,6 @@ export default function HomePage() {
       }
     });
 
-    // Convert map to array and sort by value
     return Array.from(categoryMap.values())
       .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
@@ -136,8 +135,6 @@ export default function HomePage() {
     if (!receiptData?.receipts) return [];
 
     const monthMap = new Map();
-
-    // Get last 6 months
     const today = new Date();
     for (let i = 5; i >= 0; i--) {
       const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -146,7 +143,6 @@ export default function HomePage() {
       monthMap.set(monthKey, { name: monthName, total: 0 });
     }
 
-    // Sum up spending by month
     receiptData.receipts.forEach((receipt) => {
       const date = new Date(receipt.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -160,7 +156,6 @@ export default function HomePage() {
       }
     });
 
-    // Convert map to array
     return Array.from(monthMap.values());
   }, [receiptData?.receipts]);
 
@@ -179,7 +174,6 @@ export default function HomePage() {
     return totalSpending / receiptData.receipts.length;
   }, [receiptData?.receipts, totalSpending]);
 
-  // COLORS for pie chart
   const COLORS = [
     "#0088FE",
     "#00C49F",
@@ -194,23 +188,21 @@ export default function HomePage() {
   // Format currency
   const formatCurrency = (amount: number) => {
     const currency = profile?.preferredCurrency || "EUR";
-    return new Intl.NumberFormat("en-US", {
+    const locale = profile?.language === "ro" ? "ro-RO" : "en-US";
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currency,
     }).format(amount);
   };
 
-  // Navigate to receipts list
   const handleViewAllReceipts = () => {
     router.push("/receipts");
   };
 
-  // Navigate to add receipt
   const handleAddReceipt = () => {
     router.push("/receipts/add");
   };
 
-  // Navigate to buy tokens page
   const handleBuyTokens = () => {
     router.push("/profile/buy-tokens");
   };
@@ -220,10 +212,8 @@ export default function HomePage() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Welcome to Receipt Tracker</CardTitle>
-            <CardDescription>
-              Please open this app from Telegram to continue
-            </CardDescription>
+            <CardTitle>{t("common.welcomeTitle")}</CardTitle>
+            <CardDescription>{t("common.telegramRequired")}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -239,14 +229,16 @@ export default function HomePage() {
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="dashboard">
+            {t("navigation.dashboard")}
+          </TabsTrigger>
+          <TabsTrigger value="profile">{t("navigation.profile")}</TabsTrigger>
         </TabsList>
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <h1 className="text-2xl font-bold">{t("dashboard.title")}</h1>
             <div className="flex gap-2">
               <Button
                 size="icon"
@@ -261,7 +253,7 @@ export default function HomePage() {
                 onClick={handleViewAllReceipts}
               >
                 <ListIcon className="w-4 h-4 mr-2" />
-                View All
+                {t("profile.viewAllReceipts")}
               </Button>
             </div>
           </div>
@@ -270,7 +262,9 @@ export default function HomePage() {
           <div className="grid grid-cols-2 gap-3">
             <Card className="p-3">
               <CardContent className="p-0">
-                <div className="text-xs text-gray-500 mb-1">Total Spending</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  {t("dashboard.totalSpending")}
+                </div>
                 {isLoadingReceipts ? (
                   <Skeleton className="h-6 w-20" />
                 ) : (
@@ -283,7 +277,9 @@ export default function HomePage() {
 
             <Card className="p-3">
               <CardContent className="p-0">
-                <div className="text-xs text-gray-500 mb-1">Receipts</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  {t("dashboard.receiptsCount")}
+                </div>
                 {isLoadingReceipts ? (
                   <Skeleton className="h-6 w-12" />
                 ) : (
@@ -296,7 +292,9 @@ export default function HomePage() {
 
             <Card className="p-3">
               <CardContent className="p-0">
-                <div className="text-xs text-gray-500 mb-1">Average Amount</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  {t("dashboard.averageAmount")}
+                </div>
                 {isLoadingReceipts ? (
                   <Skeleton className="h-6 w-20" />
                 ) : (
@@ -309,7 +307,9 @@ export default function HomePage() {
 
             <Card className="p-3">
               <CardContent className="p-0">
-                <div className="text-xs text-gray-500 mb-1">Categories</div>
+                <div className="text-xs text-gray-500 mb-1">
+                  {t("dashboard.categories")}
+                </div>
                 {isLoadingReceipts ? (
                   <Skeleton className="h-6 w-12" />
                 ) : (
@@ -326,7 +326,7 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center text-base">
                 <Tag className="w-4 h-4 mr-2" />
-                Spending by Category
+                {t("dashboard.spendingByCategory")}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3">
@@ -380,7 +380,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="h-[250px] flex items-center justify-center text-gray-500 text-sm">
-                  No category data available
+                  {t("dashboard.noCategoryData")}
                 </div>
               )}
 
@@ -411,7 +411,9 @@ export default function HomePage() {
                   ))}
                   {categoryData.length > 5 && (
                     <div className="text-xs text-gray-500 text-center mt-1">
-                      +{categoryData.length - 5} more categories
+                      {t("dashboard.moreCategories", {
+                        count: categoryData.length - 5,
+                      })}
                     </div>
                   )}
                 </div>
@@ -424,7 +426,7 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center text-base">
                 <TrendingUp className="w-4 h-4 mr-2" />
-                Monthly Spending
+                {t("dashboard.monthlySpending")}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3">
@@ -481,7 +483,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="h-[250px] flex items-center justify-center text-gray-500 text-sm">
-                  No monthly data available
+                  {t("dashboard.noMonthlyData")}
                 </div>
               )}
             </CardContent>
@@ -490,7 +492,7 @@ export default function HomePage() {
 
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-4 mt-4">
-          <h1 className="text-2xl font-bold">Profile</h1>
+          <h1 className="text-2xl font-bold">{t("profile.title")}</h1>
 
           {/* User Profile Card */}
           <Card>
@@ -516,21 +518,27 @@ export default function HomePage() {
               ) : (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">User ID</span>
+                    <span className="text-sm text-gray-500">
+                      {t("profile.userId")}
+                    </span>
                     <span>{user.id}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Language</span>
+                    <span className="text-sm text-gray-500">
+                      {t("profile.language")}
+                    </span>
                     <span>{profile?.language || "en"}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">
-                      Preferred Currency
+                      {t("profile.currency")}
                     </span>
                     <span>{profile?.preferredCurrency || "EUR"}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Last Login</span>
+                    <span className="text-sm text-gray-500">
+                      {t("profile.lastLogin")}
+                    </span>
                     <span>
                       {profile?.lastLoginAt
                         ? new Date(profile.lastLoginAt).toLocaleDateString()
@@ -547,10 +555,10 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Coins className="w-5 h-5 mr-2" />
-                Your Tokens
+                {t("profile.tokens")}
               </CardTitle>
               <CardDescription>
-                Use tokens to process receipts and access premium features
+                {t("profile.tokensDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -560,27 +568,29 @@ export default function HomePage() {
                 <div className="flex items-center justify-between bg-gray-100 p-4 rounded-lg">
                   <div>
                     <div className="text-sm text-gray-500">
-                      Available Balance
+                      {t("profile.availableBalance")}
                     </div>
                     <div className="text-3xl font-bold">
                       {profile?.tokens || 0}
                     </div>
                   </div>
-                  {profile && profile.tokens ? (
+                  {profile && profile.tokens !== null && (
                     <Badge
                       variant={profile?.tokens > 10 ? "default" : "destructive"}
                       className="text-xs"
                     >
-                      {profile?.tokens > 10 ? "Good Balance" : "Low Balance"}
+                      {profile?.tokens > 10
+                        ? t("profile.goodBalance")
+                        : t("profile.lowBalance")}
                     </Badge>
-                  ) : null}
+                  )}
                 </div>
               )}
             </CardContent>
             <CardFooter>
               <Button onClick={handleBuyTokens} className="w-full">
                 <CreditCard className="w-4 h-4 mr-2" />
-                Buy More Tokens
+                {t("profile.buyTokens")}
               </Button>
             </CardFooter>
           </Card>
@@ -590,7 +600,7 @@ export default function HomePage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <ReceiptIcon className="w-5 h-5 mr-2" />
-                Receipt Stats
+                {t("profile.receiptStats")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -603,17 +613,19 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">
-                      Total Receipts
+                      {t("profile.totalReceipts")}
                     </span>
                     <span>{receiptData?.totalCount || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Total Spent</span>
+                    <span className="text-sm text-gray-500">
+                      {t("profile.totalSpent")}
+                    </span>
                     <span>{formatCurrency(totalSpending)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">
-                      Average Receipt
+                      {t("profile.averageReceipt")}
                     </span>
                     <span>{formatCurrency(averageAmount)}</span>
                   </div>
@@ -627,7 +639,7 @@ export default function HomePage() {
                 className="w-full"
               >
                 <ListIcon className="w-4 h-4 mr-2" />
-                View All Receipts
+                {t("profile.viewAllReceipts")}
               </Button>
             </CardFooter>
           </Card>

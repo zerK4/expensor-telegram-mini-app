@@ -16,7 +16,6 @@ interface AddReceiptData {
   categoryId?: number;
   date: string;
   total: number;
-  currency: string;
   paidCash?: number | null;
   paidCard?: number | null;
   items: Array<{
@@ -32,7 +31,7 @@ export async function addReceipt(data: AddReceiptData) {
   try {
     // First find the user by telegram ID
     const user = await db
-      .select({ id: users.id })
+      .select({ id: users.id, currency: users.preferredCurrency })
       .from(users)
       .where(eq(users.telegramId, data.telegramUserId))
       .limit(1);
@@ -87,7 +86,7 @@ export async function addReceipt(data: AddReceiptData) {
         categoryId: data.categoryId || null,
         date: data.date,
         total: data.total,
-        currency: data.currency,
+        currency: user[0].currency ?? "EUR",
         paidCash: data.paidCash || null,
         paidCard: data.paidCard || null,
         telegramUserId: userId,

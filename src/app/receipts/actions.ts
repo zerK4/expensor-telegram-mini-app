@@ -8,7 +8,18 @@ import {
   items,
   users,
 } from "@/database/schema";
-import { eq, desc, asc, like, and, or, gte, lte, type SQL } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  asc,
+  like,
+  and,
+  or,
+  gte,
+  lte,
+  isNull,
+  type SQL,
+} from "drizzle-orm";
 
 export interface ReceiptsFilters {
   categoryId?: number;
@@ -113,28 +124,25 @@ export async function getUserReceiptsPaginated({
     }
 
     if (filters.paymentMethod === "cash") {
-      whereConditions.push(
-        and(
-          eq(receipts.paidCash, receipts.total),
-          or(eq(receipts.paidCard, 0), eq(receipts.paidCard, null)),
-        ),
-      );
+      const cashCondition = and(
+        eq(receipts.paidCash, receipts.total),
+        or(eq(receipts.paidCard, 0), isNull(receipts.paidCard))!,
+      )!;
+      whereConditions.push(cashCondition);
     } else if (filters.paymentMethod === "card") {
-      whereConditions.push(
-        and(
-          eq(receipts.paidCard, receipts.total),
-          or(eq(receipts.paidCash, 0), eq(receipts.paidCash, null)),
-        ),
-      );
+      const cardCondition = and(
+        eq(receipts.paidCard, receipts.total),
+        or(eq(receipts.paidCash, 0), isNull(receipts.paidCash))!,
+      )!;
+      whereConditions.push(cardCondition);
     }
 
     if (filters.search) {
-      whereConditions.push(
-        or(
-          like(companies.name, `%${filters.search}%`),
-          like(categories.name, `%${filters.search}%`),
-        ),
-      );
+      const searchCondition = or(
+        like(companies.name, `%${filters.search}%`),
+        like(categories.name, `%${filters.search}%`),
+      )!;
+      whereConditions.push(searchCondition);
     }
 
     // Build order by

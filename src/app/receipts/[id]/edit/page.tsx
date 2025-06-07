@@ -3,10 +3,10 @@
 import type React from "react";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useLaunchParams, backButton, init } from "@telegram-apps/sdk-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { addReceipt } from "@/app/receipts/add/actions";
+import { updateReceipt, getReceiptById } from "./actions";
 import { getFilterOptions } from "@/app/receipts/actions";
 import {
   Card,
@@ -26,29 +26,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Minus, Save } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Minus, Save, AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface ReceiptItem {
-  id: string;
+  id?: number;
   name: string;
   quantity: number;
   unitPrice: number;
   total: number;
 }
 
-export default function AddReceiptPage() {
+export default function EditReceiptPage() {
   const t = useTranslations();
   const router = useRouter();
+  const params = useParams();
   const { tgWebAppData } = useLaunchParams();
   const queryClient = useQueryClient();
 
+  const receiptId = Number.parseInt(params.id as string);
   const [user, setUser] = useState<any>(undefined);
   const [formData, setFormData] = useState({
     companyName: "",
     categoryId: "",
-    date: new Date().toISOString().split("T")[0],
+    date: "",
     total: "",
     currency: "EUR",
     paidCash: "",
@@ -56,6 +59,7 @@ export default function AddReceiptPage() {
   });
   const [items, setItems] = useState<ReceiptItem[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isFormReady, setIsFormReady] = useState(false);
 
   useEffect(() => {
     if (tgWebAppData) {
@@ -77,8 +81,22 @@ export default function AddReceiptPage() {
     };
   }, []);
 
+  // Get receipt data
+  const {
+    data: receiptData,
+    isLoading: isLoadingReceipt,
+    error: receiptError,
+  } = useQuery({
+    queryKey: ["receipt", receiptId, user?.id],
+    queryFn: () => {
+      if (!user?.id) throw new Error("User not found");
+      return getReceiptById(receiptId, user.id);
+    },
+    enabled: !!user?.id && !!receiptId,
+  });
+
   // Get categories and companies for dropdowns
-  const { data: filterOptions, isLoading: isLoadingOptions } = useQuery({
+  const { data: filterOptions } = useQuery({
     queryKey: ["filter-options", user?.id],
     queryFn: () => {
       if (!user?.id) throw new Error("User not found");
@@ -87,12 +105,41 @@ export default function AddReceiptPage() {
     enabled: !!user?.id,
   });
 
-  // Mutation for adding receipt
+  // Populate form when receipt data is loaded
+  useEffect(() => {
+    if (receiptData && !isFormReady) {
+      const receipt = receiptData.receipt;
+      setFormData({
+        companyName: receipt.company?.name || "",
+        categoryId: receipt.categoryId?.toString() || "0", // Updated default value to be a non-empty string
+        date: receipt.date,
+        total: receipt.total.toString(),
+        currency: receipt.currency,
+        paidCash: receipt.paidCash?.toString() || "",
+        paidCard: receipt.paidCard?.toString() || "",
+      });
+
+      setItems(
+        receiptData.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+        })),
+      );
+
+      setIsFormReady(true);
+    }
+  }, [receiptData, isFormReady]);
+
+  // Mutation for updating receipt
   const { mutate: saveReceipt, isPending } = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error("User not found");
 
       const receiptData = {
+        receiptId,
         telegramUserId: user.id,
         companyName: formData.companyName,
         categoryId: formData.categoryId
@@ -108,6 +155,7 @@ export default function AddReceiptPage() {
           ? Number.parseFloat(formData.paidCard)
           : null,
         items: items.map((item) => ({
+          id: item.id,
           name: item.name,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -116,17 +164,18 @@ export default function AddReceiptPage() {
         })),
       };
 
-      return addReceipt(receiptData);
+      return updateReceipt(receiptData);
     },
     onSuccess: () => {
       // Invalidate receipts queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["receipts"] });
       queryClient.invalidateQueries({ queryKey: ["receipts-analytics"] });
-      router.push("/");
+      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      router.push("/receipts");
     },
     onError: (error) => {
-      console.error("Error saving receipt:", error);
-      setErrors({ submit: t("receipt.saveError") });
+      console.error("Error updating receipt:", error);
+      setErrors({ submit: t("receipt.updateError") });
     },
   });
 
@@ -140,7 +189,6 @@ export default function AddReceiptPage() {
 
   const addItem = () => {
     const newItem: ReceiptItem = {
-      id: Date.now().toString(),
       name: "",
       quantity: 1,
       unitPrice: 0,
@@ -149,18 +197,18 @@ export default function AddReceiptPage() {
     setItems((prev) => [...prev, newItem]);
   };
 
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+  const removeItem = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateItem = (
-    id: string,
+    index: number,
     field: keyof ReceiptItem,
     value: string | number,
   ) => {
     setItems((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
+      prev.map((item, i) => {
+        if (i === index) {
           const updated = { ...item, [field]: value };
           // Auto-calculate total when quantity or unit price changes
           if (field === "quantity" || field === "unitPrice") {
@@ -231,12 +279,57 @@ export default function AddReceiptPage() {
     );
   }
 
+  if (isLoadingReceipt) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-2xl">
+        <div className="flex flex-col mb-8">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="space-y-8">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="rounded-xl">
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (receiptError) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-2xl">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {t("common.receiptNotFound")}
+          </h3>
+          <p className="text-red-600 mb-4">
+            {t("common.receiptNotFoundDescription")}
+          </p>
+          <Button onClick={() => router.push("/receipts")} variant="outline">
+            {t("common.backToReceipts")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-2xl">
-      {/* Header with back button for non-Telegram environments */}
+      {/* Header */}
       <div className="flex flex-col mb-8">
-        <h1 className="text-3xl font-bold mb-2">{t("receipt.addTitle")}</h1>
-        <p className="text-gray-600">{t("receipt.addDescription")}</p>
+        <h1 className="text-3xl font-bold mb-2">{t("receipt.editTitle")}</h1>
+        <p className="text-gray-600">{t("receipt.editDescription")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -285,7 +378,8 @@ export default function AddReceiptPage() {
                   <SelectValue placeholder={t("receipt.categoryPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">{t("receipt.noCategory")}</SelectItem>
+                  <SelectItem value="0">{t("receipt.noCategory")}</SelectItem>{" "}
+                  {/* Updated default value to be a non-empty string */}
                   {filterOptions?.categories.map((category) => (
                     <SelectItem
                       key={category.id}
@@ -440,7 +534,7 @@ export default function AddReceiptPage() {
             ) : (
               items.map((item, index) => (
                 <div
-                  key={item.id}
+                  key={index}
                   className="border rounded-xl p-4 space-y-4 bg-gray-50"
                 >
                   <div className="flex items-center justify-between">
@@ -451,7 +545,7 @@ export default function AddReceiptPage() {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(index)}
                       className="h-10 w-10 rounded-full"
                     >
                       <Minus className="w-5 h-5" />
@@ -470,7 +564,7 @@ export default function AddReceiptPage() {
                       id={`item_${index}_name`}
                       value={item.name}
                       onChange={(e) =>
-                        updateItem(item.id, "name", e.target.value)
+                        updateItem(index, "name", e.target.value)
                       }
                       placeholder={t("receipt.itemNamePlaceholder")}
                     />
@@ -497,7 +591,7 @@ export default function AddReceiptPage() {
                         value={item.quantity}
                         onChange={(e) =>
                           updateItem(
-                            item.id,
+                            index,
                             "quantity",
                             Number.parseFloat(e.target.value) || 0,
                           )
@@ -529,7 +623,7 @@ export default function AddReceiptPage() {
                         value={item.unitPrice}
                         onChange={(e) =>
                           updateItem(
-                            item.id,
+                            index,
                             "unitPrice",
                             Number.parseFloat(e.target.value) || 0,
                           )
@@ -582,12 +676,12 @@ export default function AddReceiptPage() {
                 {isPending ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
-                    {t("receipt.saving")}
+                    {t("receipt.updating")}
                   </>
                 ) : (
                   <>
                     <Save className="w-5 h-5 mr-3" />
-                    {t("receipt.save")}
+                    {t("receipt.update")}
                   </>
                 )}
               </Button>

@@ -42,12 +42,17 @@ import {
   SortAsc,
   SortDesc,
   X,
+  Edit,
 } from "lucide-react";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "@/hooks/use-debounce";
 import { backButton, init, useLaunchParams } from "@telegram-apps/sdk-react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export function ReceiptsList() {
+  const t = useTranslations();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [user, setUser] = useState<any>(null);
   const [filters, setFilters] = useState<ReceiptsFilters>({});
@@ -57,6 +62,7 @@ export function ReceiptsList() {
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [profile, setProfile] = useState<{ language: string } | null>(null);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
   const { tgWebAppData } = useLaunchParams();
@@ -77,6 +83,13 @@ export function ReceiptsList() {
       backButton.hide();
     };
   }, [tgWebAppData]);
+
+  useEffect(() => {
+    // Mock profile loading
+    setTimeout(() => {
+      setProfile({ language: "en" });
+    }, 500);
+  }, []);
 
   // Stable query key - doesn't change with filters
   const receiptsQueryKey = useMemo(() => ["receipts", user?.id], [user?.id]);
@@ -197,6 +210,35 @@ export function ReceiptsList() {
     );
   }, [filters, searchTerm]);
 
+  const handleEditReceipt = (receiptId: number) => {
+    router.push(`/receipts/${receiptId}/edit`);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const locale = profile?.language === "ro" ? "ro-RO" : "en-US";
+      return new Date(dateString).toLocaleDateString(locale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    try {
+      const locale = profile?.language === "ro" ? "ro-RO" : "en-US";
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currency,
+      }).format(amount);
+    } catch {
+      return `${amount} ${currency}`;
+    }
+  };
+
   if (!user) {
     return (
       <div className="text-center py-12">
@@ -204,9 +246,9 @@ export function ReceiptsList() {
           <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          User not found
+          {t("common.userNotFound")}
         </h3>
-        <p className="text-red-600">Please open this app from Telegram.</p>
+        <p className="text-red-600">{t("common.telegramRequired")}</p>
       </div>
     );
   }
@@ -243,40 +285,17 @@ export function ReceiptsList() {
           <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Something went wrong
+          {t("common.somethingWentWrong")}
         </h3>
         <p className="text-red-600 mb-4">
           {error?.message || "Failed to load receipts"}
         </p>
         <Button onClick={handleRetry} variant="outline">
-          Try Again
+          {t("common.tryAgain")}
         </Button>
       </div>
     );
   }
-
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: currency,
-      }).format(amount);
-    } catch {
-      return `${amount} ${currency}`;
-    }
-  };
 
   return (
     <div className="space-y-4 pb-20">
@@ -286,7 +305,7 @@ export function ReceiptsList() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Search receipts..."
+              placeholder={t("receipts.searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -304,11 +323,11 @@ export function ReceiptsList() {
             <SheetContent side="bottom" className="h-[80vh]">
               <SheetHeader>
                 <SheetTitle className="flex items-center justify-between">
-                  Filters & Sort
+                  {t("receipts.filtersSort")}
                   {hasActiveFilters && (
                     <Button variant="ghost" size="sm" onClick={clearFilters}>
                       <X className="w-4 h-4 mr-1" />
-                      Clear
+                      {t("receipts.clearFilters")}
                     </Button>
                   )}
                 </SheetTitle>
@@ -317,14 +336,23 @@ export function ReceiptsList() {
                 {/* Sort Options */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Sort by
+                    {t("receipts.sortBy")}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { field: "date" as const, label: "Date" },
-                      { field: "total" as const, label: "Amount" },
-                      { field: "company" as const, label: "Store" },
-                      { field: "category" as const, label: "Category" },
+                      { field: "date" as const, label: t("receipts.sortDate") },
+                      {
+                        field: "total" as const,
+                        label: t("receipts.sortAmount"),
+                      },
+                      {
+                        field: "company" as const,
+                        label: t("receipts.sortStore"),
+                      },
+                      {
+                        field: "category" as const,
+                        label: t("receipts.sortCategory"),
+                      },
                     ].map(({ field, label }) => (
                       <Button
                         key={field}
@@ -363,7 +391,9 @@ export function ReceiptsList() {
                       <SelectValue placeholder="All categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All categories</SelectItem>
+                      <SelectItem value="all">
+                        {t("receipts.allCategories")}
+                      </SelectItem>
                       {filterOptions?.categories.map((category) => (
                         <SelectItem
                           key={category.id}
@@ -397,7 +427,9 @@ export function ReceiptsList() {
                       <SelectValue placeholder="All stores" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All stores</SelectItem>
+                      <SelectItem value="all">
+                        {t("receipts.allStores")}
+                      </SelectItem>
                       {filterOptions?.companies.map((company) => (
                         <SelectItem
                           key={company.id}
@@ -413,7 +445,7 @@ export function ReceiptsList() {
                 {/* Payment Method Filter */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Payment Method
+                    {t("receipts.paymentMethod")}
                   </label>
                   <Select
                     value={filters.paymentMethod || "all"}
@@ -428,10 +460,18 @@ export function ReceiptsList() {
                       <SelectValue placeholder="All methods" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All methods</SelectItem>
-                      <SelectItem value="cash">Cash only</SelectItem>
-                      <SelectItem value="card">Card only</SelectItem>
-                      <SelectItem value="both">Mixed payment</SelectItem>
+                      <SelectItem value="all">
+                        {t("receipts.allMethods")}
+                      </SelectItem>
+                      <SelectItem value="cash">
+                        {t("receipts.cashOnly")}
+                      </SelectItem>
+                      <SelectItem value="card">
+                        {t("receipts.cardOnly")}
+                      </SelectItem>
+                      <SelectItem value="both">
+                        {t("receipts.mixedPayment")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -440,7 +480,7 @@ export function ReceiptsList() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-sm font-medium mb-2 block">
-                      Min Amount
+                      {t("receipts.minAmount")}
                     </label>
                     <Input
                       type="number"
@@ -458,7 +498,7 @@ export function ReceiptsList() {
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">
-                      Max Amount
+                      {t("receipts.maxAmount")}
                     </label>
                     <Input
                       type="number"
@@ -480,7 +520,7 @@ export function ReceiptsList() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-sm font-medium mb-2 block">
-                      From Date
+                      {t("receipts.fromDate")}
                     </label>
                     <Input
                       type="date"
@@ -495,7 +535,7 @@ export function ReceiptsList() {
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">
-                      To Date
+                      {t("receipts.toDate")}
                     </label>
                     <Input
                       type="date"
@@ -518,8 +558,8 @@ export function ReceiptsList() {
         <div className="flex items-center justify-between text-sm text-gray-600">
           <span>
             {isRefetching
-              ? "Searching..."
-              : `${totalCount} receipt${totalCount !== 1 ? "s" : ""} found`}
+              ? t("receipts.searching")
+              : t("receipts.found", { count: totalCount })}
           </span>
           {hasActiveFilters && (
             <Button
@@ -528,7 +568,7 @@ export function ReceiptsList() {
               onClick={clearFilters}
               className="text-blue-600"
             >
-              Clear filters
+              {t("receipts.clearFiltersBtn")}
             </Button>
           )}
         </div>
@@ -557,13 +597,13 @@ export function ReceiptsList() {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             {hasActiveFilters
-              ? "No receipts match your filters"
-              : "No receipts yet"}
+              ? t("receipts.noMatch")
+              : t("receipts.noReceipts")}
           </h3>
           <p className="text-gray-500 mb-4">
             {hasActiveFilters
-              ? "Try adjusting your search criteria or clearing filters."
-              : "Your receipts will appear here once you start adding them."}
+              ? t("receipts.adjustFilters")
+              : t("receipts.startAdding")}
           </p>
         </div>
       ) : (
@@ -583,7 +623,7 @@ export function ReceiptsList() {
                         </span>
                       )}
                       <span className="truncate">
-                        {receipt.company?.name || "Unknown Store"}
+                        {receipt.company?.name || t("receipts.unknownStore")}
                       </span>
                     </CardTitle>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
@@ -601,10 +641,20 @@ export function ReceiptsList() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-4">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(receipt.total, receipt.currency)}
+                  <div className="flex items-start gap-2 flex-shrink-0 ml-4">
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {formatCurrency(receipt.total, receipt.currency)}
+                      </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditReceipt(receipt.id)}
+                      className="h-8 w-8 rounded-full"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -614,7 +664,7 @@ export function ReceiptsList() {
                     <div className="flex items-center gap-1">
                       <Banknote className="w-4 h-4 flex-shrink-0" />
                       <span>
-                        Cash:{" "}
+                        {t("receipts.cash")}:{" "}
                         {formatCurrency(receipt.paidCash, receipt.currency)}
                       </span>
                     </div>
@@ -623,7 +673,7 @@ export function ReceiptsList() {
                     <div className="flex items-center gap-1">
                       <CreditCard className="w-4 h-4 flex-shrink-0" />
                       <span>
-                        Card:{" "}
+                        {t("receipts.card")}:{" "}
                         {formatCurrency(receipt.paidCard, receipt.currency)}
                       </span>
                     </div>
@@ -631,7 +681,7 @@ export function ReceiptsList() {
                 </div>
                 {receipt.createdAt && (
                   <div className="text-xs text-gray-400">
-                    Added on {formatDate(receipt.createdAt)}
+                    {t("receipts.addedOn")} {formatDate(receipt.createdAt)}
                   </div>
                 )}
               </CardContent>
@@ -644,13 +694,13 @@ export function ReceiptsList() {
               <div className="text-center">
                 <div className="inline-flex items-center gap-2 text-sm text-gray-600">
                   <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-                  Loading more receipts...
+                  {t("receipts.loadingMore")}
                 </div>
               </div>
             )}
             {!hasNextPage && allReceipts.length > 0 && (
               <div className="text-center text-sm text-gray-500">
-                You&apos;ve reached the end of your receipts
+                {t("receipts.endReached")}
               </div>
             )}
           </div>
