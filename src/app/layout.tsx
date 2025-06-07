@@ -1,7 +1,7 @@
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { TmaSDKProvider } from "@/components/tma";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +18,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <TmaSDKProvider>{children}</TmaSDKProvider>
+        <QueryProvider>
+          {/* <ThemeProvider attribute="class" defaultTheme="light"> */}
+          {children}
+          {/* </ThemeProvider> */}
+        </QueryProvider>
       </body>
     </html>
   );
