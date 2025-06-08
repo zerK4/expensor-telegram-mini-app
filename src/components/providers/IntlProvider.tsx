@@ -5,40 +5,33 @@ import type React from "react";
 import { NextIntlClientProvider } from "next-intl";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { getUserProfile } from "@/app/profile/actions";
 import { getUserLocale, type Locale } from "@/lib/i18n";
 
 // Import messages statically for client-side
 import enMessages from "@/messages/en.json";
 import roMessages from "@/messages/ro.json";
+import { useUser } from "@/hooks/use-user";
 
 const messages = {
   en: enMessages,
   ro: roMessages,
 };
 
-export function IntlProvider({ children }: { children: React.ReactNode }) {
-  const { tgWebAppData } = useLaunchParams();
-  const [user, setUser] = useState<any>(null);
+export default function IntlProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
   const [locale, setLocale] = useState<Locale>("en");
 
-  useEffect(() => {
-    if (tgWebAppData) {
-      setUser(tgWebAppData.user);
-    }
-  }, [tgWebAppData]);
+  const { telegramUser: user, user: profile } = useUser();
 
-  // Get user profile to determine language preference
-  const { data: profile } = useQuery({
-    queryKey: ["user-profile", user?.id],
-    queryFn: () => {
-      if (!user?.id) throw new Error("User not found");
-      return getUserProfile(user.id);
-    },
-    enabled: !!user?.id,
-    staleTime: 1000 * 60 * 10, // 10 minutes
-  });
+  // Handle hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (profile?.language) {
@@ -46,6 +39,19 @@ export function IntlProvider({ children }: { children: React.ReactNode }) {
       setLocale(userLocale);
     }
   }, [profile?.language]);
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <NextIntlClientProvider
+        locale="en"
+        messages={messages.en}
+        timeZone="Europe/Bucharest"
+      >
+        {children}
+      </NextIntlClientProvider>
+    );
+  }
 
   return (
     <NextIntlClientProvider

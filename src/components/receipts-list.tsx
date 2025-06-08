@@ -46,15 +46,15 @@ import {
 } from "lucide-react";
 import { useInView } from "react-intersection-observer";
 import { useDebounce } from "@/hooks/use-debounce";
-import { backButton, init, useLaunchParams } from "@telegram-apps/sdk-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useUser } from "@/hooks/use-user";
 
-export function ReceiptsList() {
+export default function ReceiptsList() {
   const t = useTranslations();
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const [user, setUser] = useState<any>(null);
+
+  const [mounted, setMounted] = useState(false);
   const [filters, setFilters] = useState<ReceiptsFilters>({});
   const [sort, setSort] = useState<ReceiptsSortOptions>({
     field: "date",
@@ -64,35 +64,28 @@ export function ReceiptsList() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [profile, setProfile] = useState<{ language: string } | null>(null);
 
+  const { telegramUser: user, isLoading: isLoadingUser } = useUser();
+
   const debouncedSearch = useDebounce(searchTerm, 300);
-  const { tgWebAppData } = useLaunchParams();
 
   useEffect(() => {
-    init();
-    backButton.mount();
-
-    if (tgWebAppData) {
-      setUser(tgWebAppData.user);
-    }
-
-    backButton.show();
-    backButton.onClick(() => {
-      window.history.back();
-    });
-    return () => {
-      backButton.hide();
-    };
-  }, [tgWebAppData]);
-
-  useEffect(() => {
-    // Mock profile loading
+    setMounted(true);
     setTimeout(() => {
       setProfile({ language: "en" });
     }, 500);
   }, []);
 
-  // Stable query key - doesn't change with filters
-  const receiptsQueryKey = useMemo(() => ["receipts", user?.id], [user?.id]);
+  // Stable query key that doesn't change with filters
+  const baseQueryKey = useMemo(() => ["receipts", user?.id], [user?.id]);
+
+  // Create a stable filters object to prevent unnecessary re-renders
+  const stableFilters = useMemo(
+    () => ({
+      ...filters,
+      search: debouncedSearch,
+    }),
+    [filters, debouncedSearch],
+  );
 
   // Infinite query for receipts with stable key
   const {
@@ -106,23 +99,30 @@ export function ReceiptsList() {
     refetch,
     isRefetching,
   } = useInfiniteQuery({
-    queryKey: receiptsQueryKey,
+    queryKey: baseQueryKey,
     queryFn: ({ pageParam = 1 }) => {
       if (!user?.id) throw new Error("User not found");
       return getUserReceiptsPaginated({
         telegramId: user.id,
         page: pageParam,
         limit: 30,
-        filters: { ...filters, search: debouncedSearch },
+        filters: stableFilters,
         sort,
       });
     },
-    initialPageParam: 1, // Add this line to fix the error
+    initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.nextPage,
-    enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!user?.id && mounted,
+    staleTime: 0, // Always refetch when filters change
     refetchOnWindowFocus: false,
   });
+
+  // Effect to refetch when filters or sort change
+  useEffect(() => {
+    if (user?.id && mounted) {
+      refetch();
+    }
+  }, [stableFilters, sort, user?.id, mounted, refetch]);
 
   // Query for filter options
   const { data: filterOptions } = useQuery({
@@ -131,7 +131,7 @@ export function ReceiptsList() {
       if (!user?.id) throw new Error("User not found");
       return getFilterOptions(user.id);
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && mounted,
     staleTime: 1000 * 60 * 10, // 10 minutes
     refetchOnWindowFocus: false,
   });
@@ -148,23 +148,6 @@ export function ReceiptsList() {
       fetchNextPage();
     }
   }, [inView, hasNextPage, isFetchingNextPage, isRefetching, fetchNextPage]);
-
-  // Refetch when filters or sort change
-  useEffect(() => {
-    if (user?.id) {
-      // Reset and refetch the query when filters change
-      queryClient.resetQueries({ queryKey: receiptsQueryKey });
-      refetch();
-    }
-  }, [
-    filters,
-    sort,
-    debouncedSearch,
-    user?.id,
-    queryClient,
-    receiptsQueryKey,
-    refetch,
-  ]);
 
   // Flatten all receipts from pages
   const allReceipts = useMemo(() => {
@@ -239,16 +222,39 @@ export function ReceiptsList() {
     }
   };
 
-  if (!user) {
+  if (!mounted) {
+    return (
+      <div className="space-y-4">
+        {/* Search and filter skeleton */}
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1 h-10 bg-muted rounded animate-pulse"></div>
+          <div className="w-20 h-10 bg-muted rounded animate-pulse"></div>
+        </div>
+        {/* Receipt cards skeleton */}
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-5 bg-muted rounded w-3/4 mb-2"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 bg-muted rounded w-1/4 mb-2"></div>
+              <div className="h-3 bg-muted rounded w-1/3"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!user && !isLoadingUser) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-          <AlertCircle className="w-8 h-8 text-red-600" />
+        <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          {t("common.userNotFound")}
-        </h3>
-        <p className="text-red-600">{t("common.telegramRequired")}</p>
+        <h3 className="text-lg font-medium mb-2">{t("common.userNotFound")}</h3>
+        <p className="text-destructive">{t("common.telegramRequired")}</p>
       </div>
     );
   }
@@ -258,19 +264,19 @@ export function ReceiptsList() {
       <div className="space-y-4">
         {/* Search and filter skeleton */}
         <div className="flex gap-2 mb-4">
-          <div className="flex-1 h-10 bg-gray-200 rounded animate-pulse"></div>
-          <div className="w-20 h-10 bg-gray-200 rounded animate-pulse"></div>
+          <div className="flex-1 h-10 bg-muted rounded animate-pulse"></div>
+          <div className="w-20 h-10 bg-muted rounded animate-pulse"></div>
         </div>
         {/* Receipt cards skeleton */}
         {[...Array(3)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader>
-              <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-5 bg-muted rounded w-3/4 mb-2"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
             </CardHeader>
             <CardContent>
-              <div className="h-8 bg-gray-200 rounded w-1/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-8 bg-muted rounded w-1/4 mb-2"></div>
+              <div className="h-3 bg-muted rounded w-1/3"></div>
             </CardContent>
           </Card>
         ))}
@@ -281,13 +287,13 @@ export function ReceiptsList() {
   if (isError) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-          <AlertCircle className="w-8 h-8 text-red-600" />
+        <div className="w-16 h-16 mx-auto mb-4 bg-destructive/20 rounded-full flex items-center justify-center">
+          <AlertCircle className="w-8 h-8 text-destructive" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <h3 className="text-lg font-medium mb-2">
           {t("common.somethingWentWrong")}
         </h3>
-        <p className="text-red-600 mb-4">
+        <p className="text-destructive mb-4">
           {error?.message || "Failed to load receipts"}
         </p>
         <Button onClick={handleRetry} variant="outline">
@@ -300,10 +306,10 @@ export function ReceiptsList() {
   return (
     <div className="space-y-4 pb-20">
       {/* Search and Filter Bar */}
-      <div className="sticky top-0 bg-white z-10 pb-4 border-b">
+      <div className="sticky top-0 bg-background z-10 pb-4 border-b">
         <div className="flex gap-2 mb-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder={t("receipts.searchPlaceholder")}
               value={searchTerm}
@@ -316,11 +322,11 @@ export function ReceiptsList() {
               <Button variant="outline" size="icon" className="relative">
                 <Filter className="w-4 h-4" />
                 {hasActiveFilters && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></div>
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="h-[80vh]">
+            <SheetContent side="bottom" className="h-[80vh] overflow-auto">
               <SheetHeader>
                 <SheetTitle className="flex items-center justify-between">
                   {t("receipts.filtersSort")}
@@ -376,7 +382,7 @@ export function ReceiptsList() {
                 {/* Category Filter */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Category
+                    {t("receipts.categoryFilter")}
                   </label>
                   <Select
                     value={filters.categoryId?.toString() || "all"}
@@ -412,7 +418,7 @@ export function ReceiptsList() {
                 {/* Company Filter */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Store
+                    {t("receipts.storeFilter")}
                   </label>
                   <Select
                     value={filters.companyId?.toString() || "all"}
@@ -555,7 +561,7 @@ export function ReceiptsList() {
         </div>
 
         {/* Results count and active filters */}
-        <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             {isRefetching
               ? t("receipts.searching")
@@ -566,7 +572,7 @@ export function ReceiptsList() {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="text-blue-600"
+              className="text-primary"
             >
               {t("receipts.clearFiltersBtn")}
             </Button>
@@ -580,27 +586,27 @@ export function ReceiptsList() {
           {[...Array(3)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-5 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-4 bg-muted rounded w-1/2"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-1/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                <div className="h-8 bg-muted rounded w-1/4 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-1/3"></div>
               </CardContent>
             </Card>
           ))}
         </div>
       ) : allReceipts.length === 0 ? (
         <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-            <ReceiptIcon className="w-8 h-8 text-gray-400" />
+          <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+            <ReceiptIcon className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium mb-2">
             {hasActiveFilters
               ? t("receipts.noMatch")
               : t("receipts.noReceipts")}
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-muted-foreground mb-4">
             {hasActiveFilters
               ? t("receipts.adjustFilters")
               : t("receipts.startAdding")}
@@ -626,7 +632,7 @@ export function ReceiptsList() {
                         {receipt.company?.name || t("receipts.unknownStore")}
                       </span>
                     </CardTitle>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4 flex-shrink-0" />
                         <span>{formatDate(receipt.date)}</span>
@@ -643,7 +649,7 @@ export function ReceiptsList() {
                   </div>
                   <div className="flex items-start gap-2 flex-shrink-0 ml-4">
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-gray-900">
+                      <div className="text-2xl font-bold">
                         {formatCurrency(receipt.total, receipt.currency)}
                       </div>
                     </div>
@@ -659,7 +665,7 @@ export function ReceiptsList() {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-2">
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-2">
                   {receipt.paidCash !== null && receipt.paidCash > 0 && (
                     <div className="flex items-center gap-1">
                       <Banknote className="w-4 h-4 flex-shrink-0" />
@@ -680,7 +686,7 @@ export function ReceiptsList() {
                   )}
                 </div>
                 {receipt.createdAt && (
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-muted-foreground">
                     {t("receipts.addedOn")} {formatDate(receipt.createdAt)}
                   </div>
                 )}
@@ -692,14 +698,14 @@ export function ReceiptsList() {
           <div ref={ref} className="py-4">
             {isFetchingNextPage && (
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 text-sm text-gray-600">
-                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-4 h-4 border-2 border-muted-foreground border-t-primary rounded-full animate-spin"></div>
                   {t("receipts.loadingMore")}
                 </div>
               </div>
             )}
             {!hasNextPage && allReceipts.length > 0 && (
-              <div className="text-center text-sm text-gray-500">
+              <div className="text-center text-sm text-muted-foreground">
                 {t("receipts.endReached")}
               </div>
             )}

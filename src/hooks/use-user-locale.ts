@@ -4,16 +4,12 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { getUserProfile } from "@/app/profile/actions";
-import {
-  getUserLocale,
-  type SupportedLocale,
-  DEFAULT_LOCALE,
-} from "@/lib/i18n";
+import { getUserLocale } from "@/lib/i18n";
 
 export function useUserLocale() {
   const { tgWebAppData } = useLaunchParams();
   const [user, setUser] = useState<any>(null);
-  const [locale, setLocale] = useState<SupportedLocale>(DEFAULT_LOCALE);
+  const [locale, setLocale] = useState("en");
 
   useEffect(() => {
     if (tgWebAppData) {

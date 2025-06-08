@@ -7,6 +7,7 @@ import {
   categories,
   items,
   users,
+  CategoryInsertType,
 } from "@/database/schema";
 import { eq } from "drizzle-orm";
 
@@ -25,6 +26,15 @@ interface AddReceiptData {
     total: number;
     currency: string;
   }>;
+}
+
+export async function addCategory(data: CategoryInsertType) {
+  const newCategory = await db
+    .insert(categories)
+    .values(data)
+    .returning({ id: categories.id });
+
+  return newCategory[0].id;
 }
 
 export async function addReceipt(data: AddReceiptData) {

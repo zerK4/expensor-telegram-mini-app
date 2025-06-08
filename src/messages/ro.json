@@ -18,7 +18,8 @@
     "monthlySpending": "Cheltuieli Lunare",
     "noCategoryData": "Nu există date pentru categorii",
     "noMonthlyData": "Nu există date lunare",
-    "moreCategories": "+{count} categorii în plus"
+    "moreCategories": "+{count} categorii în plus",
+    "quickActions": "Acțiuni Rapide"
   },
   "receipts": {
     "title": "Bonurile Mele",
@@ -96,7 +97,25 @@
     "saving": "Se salvează bonul...",
     "updating": "Se actualizează bonul...",
     "saveError": "Nu s-a putut salva bonul. Te rugăm să încerci din nou.",
-    "updateError": "Nu s-a putut actualiza bonul. Te rugăm să încerci din nou."
+    "updateError": "Nu s-a putut actualiza bonul. Te rugăm să încerci din nou.",
+    "newCategory": "Adaugă o categorie nouă"
+  },
+  "category": {
+    "new": "Categorie nouă",
+    "name": "Nume",
+    "icon": "Iconița",
+    "create": "Creează",
+    "iconPlaceholder": "🏷️",
+    "namePlaceholder": "Introduceți numele categoriei",
+    "validation": {
+      "nameRequired": "Numele categoriei este obligatoriu",
+      "nameTooShort": "Numele trebuie să aibă cel puțin 2 caractere",
+      "nameTooLong": "Numele trebuie să aibă mai puțin de 50 de caractere",
+      "nameExists": "Există deja o categorie cu acest nume",
+      "iconRequired": "Iconița este obligatorie",
+      "iconInvalid": "Vă rugăm să introduceți un emoji valid",
+      "generalError": "Nu s-a putut crea categoria. Vă rugăm să încercați din nou."
+    }
   },
   "profile": {
     "title": "Profil",
@@ -114,7 +133,21 @@
     "totalReceipts": "Total Bonuri",
     "totalSpent": "Total Cheltuit",
     "averageReceipt": "Bon Mediu",
-    "viewAllReceipts": "Vezi Toate Bonurile"
+    "viewAllReceipts": "Vezi Toate Bonurile",
+    "settings": "Setări",
+    "accountInfo": "Informații Cont",
+    "telegramInfo": "Informații Telegram",
+    "telegramInfoDescription": "Aceste informații provin din Telegram și nu pot fi modificate aici",
+    "firstName": "Prenume",
+    "lastName": "Nume",
+    "username": "Nume utilizator",
+    "telegramLanguage": "Limba Telegram",
+    "currentLanguage": "Limba Actuală",
+    "currentCurrency": "Moneda Actuală",
+    "theme": "Temă",
+    "lightMode": "Luminos",
+    "darkMode": "Întunecat",
+    "systemMode": "Sistem"
   },
   "buyTokens": {
     "title": "Cumpără Credite",
@@ -124,7 +157,10 @@
     "bestValue": "Cea Mai Bună Ofertă",
     "perToken": "per credit",
     "purchase": "Cumpără Acum",
-    "processing": "Se procesează..."
+    "processing": "Se procesează...",
+    "backToDashboard": "Înapoi la Tabloul de Bord",
+    "tokens": "Credite",
+    "price": "Preț"
   },
   "common": {
     "loading": "Se încarcă...",
@@ -141,7 +177,8 @@
     "somethingWentWrong": "Ceva nu a mers bine",
     "receiptNotFound": "Bon negăsit",
     "receiptNotFoundDescription": "Bonul pe care îl cauți nu există sau nu ai acces la el.",
-    "backToReceipts": "Înapoi la Bonuri"
+    "backToReceipts": "Înapoi la Bonuri",
+    "notAvailable": "N/A"
   },
   "errors": {
     "general": "A apărut o eroare. Te rugăm să încerci din nou.",
@@ -150,7 +187,8 @@
   "currency": {
     "eur": "EUR",
     "usd": "USD",
-    "gbp": "GBP"
+    "gbp": "GBP",
+    "ron": "RON"
   },
   "time": {
     "today": "Astăzi",

@@ -18,7 +18,8 @@
     "monthlySpending": "Monthly Spending",
     "noCategoryData": "No category data available",
     "noMonthlyData": "No monthly data available",
-    "moreCategories": "+{count} more categories"
+    "moreCategories": "+{count} more categories",
+    "quickActions": "Quick Actions"
   },
   "receipts": {
     "title": "My Receipts",
@@ -96,7 +97,20 @@
     "saving": "Saving Receipt...",
     "updating": "Updating Receipt...",
     "saveError": "Failed to save receipt. Please try again.",
-    "updateError": "Failed to update receipt. Please try again."
+    "updateError": "Failed to update receipt. Please try again.",
+    "newCategory": "Add a new one"
+  },
+  "category": {
+    "namePlaceholder": "Enter category name",
+    "validation": {
+      "nameRequired": "Category name is required",
+      "nameTooShort": "Name must be at least 2 characters",
+      "nameTooLong": "Name must be less than 50 characters",
+      "nameExists": "Category with this name already exists",
+      "iconRequired": "Icon is required",
+      "iconInvalid": "Please enter a valid emoji",
+      "generalError": "Failed to create category. Please try again."
+    }
   },
   "profile": {
     "title": "Profile",
@@ -114,7 +128,21 @@
     "totalReceipts": "Total Receipts",
     "totalSpent": "Total Spent",
     "averageReceipt": "Average Receipt",
-    "viewAllReceipts": "View All Receipts"
+    "viewAllReceipts": "View All Receipts",
+    "settings": "Settings",
+    "accountInfo": "Account Information",
+    "telegramInfo": "Telegram Information",
+    "telegramInfoDescription": "This information comes from Telegram and cannot be changed here",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "username": "Username",
+    "telegramLanguage": "Telegram Language",
+    "currentLanguage": "Current Language",
+    "currentCurrency": "Current Currency",
+    "theme": "Theme",
+    "lightMode": "Light",
+    "darkMode": "Dark",
+    "systemMode": "System"
   },
   "buyTokens": {
     "title": "Buy Tokens",
@@ -124,7 +152,10 @@
     "bestValue": "Best Value",
     "perToken": "per token",
     "purchase": "Purchase Now",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "backToDashboard": "Back to Dashboard",
+    "tokens": "Tokens",
+    "price": "Price"
   },
   "common": {
     "loading": "Loading...",
@@ -141,7 +172,8 @@
     "somethingWentWrong": "Something went wrong",
     "receiptNotFound": "Receipt not found",
     "receiptNotFoundDescription": "The receipt you're looking for doesn't exist or you don't have access to it.",
-    "backToReceipts": "Back to Receipts"
+    "backToReceipts": "Back to Receipts",
+    "notAvailable": "N/A"
   },
   "errors": {
     "general": "An error occurred. Please try again.",
@@ -150,7 +182,8 @@
   "currency": {
     "eur": "EUR",
     "usd": "USD",
-    "gbp": "GBP"
+    "gbp": "GBP",
+    "ron": "RON"
   },
   "time": {
     "today": "Today",

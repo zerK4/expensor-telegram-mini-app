@@ -35,6 +35,37 @@ export async function getUserProfile(telegramId: number) {
   }
 }
 
+export async function updateUserProfile(
+  telegramId: number,
+  data: { language?: string; currency?: string },
+) {
+  try {
+    const updateData: any = {};
+
+    if (data.language) {
+      updateData.language = data.language;
+    }
+
+    if (data.currency) {
+      updateData.preferredCurrency = data.currency;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new Error("No data to update");
+    }
+
+    await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.telegramId, telegramId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    throw new Error("Failed to update user profile");
+  }
+}
+
 export async function updateUserLastLogin(telegramId: number) {
   try {
     await db
