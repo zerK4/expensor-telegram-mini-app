@@ -189,10 +189,12 @@ export function ProfileSheet({ user, isOpen, onClose }: ProfileSheetProps) {
                   )}
                 </div>
               )}
-              <Button className="w-full" size="sm">
-                <CreditCard className="w-4 h-4 mr-2" />
-                {t("profile.buyTokens")}
-              </Button>
+              <div className="w-full flex items-center justify-center mt-2">
+                <span className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <CreditCard className="w-4 h-4" />
+                  {t("profile.buyTokens")}
+                </span>
+              </div>
             </CardContent>
           </Card>
 
