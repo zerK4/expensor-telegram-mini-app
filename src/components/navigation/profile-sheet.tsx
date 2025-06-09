@@ -114,11 +114,6 @@ export function ProfileSheet({ user, isOpen, onClose }: ProfileSheetProps) {
     updateProfile({ currency });
   };
 
-  const handleBuyTokens = () => {
-    onClose();
-    router.push("/profile/buy-tokens");
-  };
-
   const currentLanguage = pendingLanguage || profile?.language || "en";
   const currentCurrency =
     pendingCurrency || profile?.preferredCurrency || "EUR";
