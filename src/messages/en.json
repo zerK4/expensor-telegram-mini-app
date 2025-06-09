@@ -123,7 +123,7 @@
     "availableBalance": "Available Balance",
     "goodBalance": "Good Balance",
     "lowBalance": "Low Balance",
-    "buyTokens": "Buy More Tokens",
+    "buyTokens": "Buy More Tokens using /buytokens command in telegram.",
     "receiptStats": "Receipt Stats",
     "totalReceipts": "Total Receipts",
     "totalSpent": "Total Spent",

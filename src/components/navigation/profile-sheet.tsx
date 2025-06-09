@@ -149,16 +149,11 @@ export function ProfileSheet({ user, isOpen, onClose }: ProfileSheetProps) {
                 <User className="h-6 w-6" />
               </AvatarFallback>
             </Avatar>
-            <div>
-              <div className="font-semibold text-lg">
-                {user.firstName} {user.lastName}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                @{user.username || "user"}
-              </div>
+            <div className="font-semibold text-lg">
+              {user.firstName} {user.lastName}
             </div>
           </SheetTitle>
-          <SheetDescription>{t("profile.title")}</SheetDescription>
+          {/* <SheetDescription>{t("profile.title")}</SheetDescription> */}
         </SheetHeader>
 
         <div className="space-y-6 mt-6">
@@ -194,7 +189,7 @@ export function ProfileSheet({ user, isOpen, onClose }: ProfileSheetProps) {
                   )}
                 </div>
               )}
-              <Button onClick={handleBuyTokens} className="w-full" size="sm">
+              <Button className="w-full" size="sm">
                 <CreditCard className="w-4 h-4 mr-2" />
                 {t("profile.buyTokens")}
               </Button>
